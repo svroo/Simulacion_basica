@@ -1,13 +1,16 @@
 import os
+import numpy as np
+import collections
 
 nu = dict()
 
 
 class Reencuento:
-    def __init__(self, size: int, semilla: int):
+    def __init__(self, size: int, semilla: int, parameters=[48271, 0, 2147483647]):
         self.size = size
         self.semilla = semilla
         self.numeros = list()
+        self.parameters = parameters
 
     def random_number_self(self):
         """Funcion creada de manera propia en la que
@@ -50,9 +53,7 @@ class Reencuento:
             nums.append(n)
         return nums[1:]
 
-    def congruenciaLineal(
-        self, parameters=[1103515245, 12345, 32768], normalizar=False
-    ):
+    def congruenciaLineal(self, normalizar=False):
         """Función para generar numeros aleatorios usando el algoritmo de congruencia lineal. Este método genera una secuancia de números pseudoaletorios a partir de una semilla inicial, utilizando la fórmula:
         xn+1 = (a * xn + c) mod m
 
@@ -66,7 +67,7 @@ class Reencuento:
         """
         xn = self.semilla
 
-        a, c, m = parameters
+        a, c, m = self.parameters
 
         nums = [xn]
 
@@ -149,7 +150,9 @@ class Reencuento:
         """
 
         # for i,j in numeros.items():
-        with open(file=ubi + nombre + ".txt", mode="w") as f:
+        with open(
+            file=ubi + nombre + "_" + str(self.parameters) + ".txt", mode="w"
+        ) as f:
             for element in numeros:
                 f.write(str(element))
                 f.write("\n")
@@ -192,25 +195,75 @@ class Reencuento:
             files = os.listdir(ubi)
 
         for file in files:
-            with open(file=ubi + file, mode="r") as f:
-                for element in f:
-                    n = float(element)
-                    if n % 1 == 0.0:
-                        n = int(element)
-                        self.numeros.append(n)
-                    else:
-                        self.numeros.append(n)
+            if file != "resultados.txt":
+                with open(file=ubi + file, mode="r") as f:
+                    for element in f:
+                        n = float(element)
+                        if n % 1 == 0.0:
+                            n = int(element)
+                            self.numeros.append(n)
+                        else:
+                            self.numeros.append(n)
 
-        nums = list(set(self.numeros))
-        nums.sort()
-        for i in range(len(nums)):
+        nums = np.array(self.numeros)
+        unique, count = np.unique(nums, return_counts=True)
+        res = dict(zip(unique, count))
+
+        indices = dict()
+
+        for i in range(unique.shape[0]):
+            aux = list()
+            for j in range(nums.shape[0]):
+                if nums[j] == unique[i]:
+                    aux.append(j)
+            indices[unique[i]] = aux
+
+        for numero in unique:
             nu[
-                nums[i]
-            ] = f"El número: {nums[i]} esta en el indice: {self.numeros.index(nums[i])} y aparece {self.numeros.count(nums[i])}"
+                numero
+            ] = f"El número {numero} aparece un total de : {res[numero]} veces, en los indices: {indices[numero]}"
 
         with open(file=ubi + "resultados.txt", mode="w", encoding="utf-8") as file:
             for i, j in nu.items():
                 file.write(j)
                 file.write("\n")
+
+        print("Terminado")
+
+    def comprobar_numeros_dos(self, ubi="./Numeros generados/"):
+        # Comprobar si los archivos ya existen
+        if not os.path.exists(ubi):
+            os.makedirs(ubi)
+            self.generar_numeros()
+
+        numeros_unicos = set()
+        indices = {}
+
+        # Leer los archivos y realizar el seguimiento de los índices
+        for file in os.listdir(ubi):
+            if not file.startswith("resultados_dos"):  # or file != 'resultados.txt':
+                with open(os.path.join(ubi, file), "r") as f:
+                    for index, element in enumerate(f):
+                        n = float(element)
+                        if n.is_integer():
+                            n = int(n)
+                        else:
+                            n = round(n)  # Redondear números no enteros
+                        numeros_unicos.add(n)
+                        indices.setdefault(n, []).append(index)
+
+        # Calcular las frecuencias
+        frecuencias = {numero: indices[numero] for numero in numeros_unicos}
+
+        # Escribir los resultados en un archivo
+        with open(
+            os.path.join(ubi, "resultados_dos_" + str(self.parameters) + ".txt"),
+            "w",
+            encoding="utf-8",
+        ) as file:
+            for numero, index_list in frecuencias.items():
+                file.write(
+                    f"El número {numero} aparece un total de {len(index_list)} veces, en los índices: {index_list}\n"
+                )
 
         print("Terminado")
